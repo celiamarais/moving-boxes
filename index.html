@@ -96,7 +96,7 @@
     <button class="icon-btn" id="menuBtn" title="Export / Settings">⋯</button>
   </div>
   <div class="search">
-    <input type="text" id="searchInput" placeholder="Search box #, name, room, or contents…">
+    <input type="text" id="searchInput" placeholder="Search box ID, name, room, or contents…">
   </div>
   <div class="chips" id="roomChips"></div>
 </header>
@@ -180,15 +180,29 @@ function roomColor(room){
 /* ---------- Init ---------- */
 async function init(){
   boxes = await dbGetAll();
-  boxes.sort((a,b)=> (a.number||0) - (b.number||0));
+  sortBoxes();
   render();
 }
 init();
 
-/* ---------- Rendering ---------- */
-function nextBoxNumber(){
-  const max = boxes.reduce((m,b)=> Math.max(m, b.number||0), 0);
+/* ---------- Identifiers ---------- */
+function sortBoxes(){
+  boxes.sort((a,b)=>{
+    const ra = (a.room||'').toLowerCase(), rb = (b.room||'').toLowerCase();
+    if(ra !== rb) return ra.localeCompare(rb);
+    return (a.number||0) - (b.number||0);
+  });
+}
+
+function nextNumberForRoom(room, excludeId){
+  const norm = (room||'').trim().toLowerCase();
+  const scoped = boxes.filter(b => (b.room||'').trim().toLowerCase() === norm && b.id !== excludeId);
+  const max = scoped.reduce((m,b)=> Math.max(m, b.number||0), 0);
   return max + 1;
+}
+
+function boxIdentifier(b){
+  return b.room ? `${b.number}-${b.room}` : `${b.number}`;
 }
 
 function render(){
@@ -227,7 +241,7 @@ function filteredBoxes(){
   return boxes.filter(b=>{
     if(activeRoomFilter && b.room !== activeRoomFilter) return false;
     if(searchQuery){
-      const hay = `${b.number} ${b.name||''} ${b.room||''} ${b.contents||''}`.toLowerCase();
+      const hay = `${boxIdentifier(b)} ${b.name||''} ${b.room||''} ${b.contents||''}`.toLowerCase();
       if(!hay.includes(searchQuery.toLowerCase())) return false;
     }
     return true;
@@ -261,7 +275,7 @@ function renderGrid(){
       </div>
       <div class="body">
         <div class="title-row">
-          <div class="num">#${b.number}</div>
+          <div class="num">${escapeHtml(boxIdentifier(b))}</div>
           <div class="name">${escapeHtml(b.name||'')}</div>
         </div>
         ${b.room ? `<div class="room-badge" style="background:${roomColor(b.room)}">${escapeHtml(b.room)}</div>` : ''}
@@ -309,7 +323,7 @@ function openLightbox(src){
 async function confirmDelete(id){
   const box = boxes.find(b=>b.id===id);
   if(!box) return;
-  if(!confirm(`Delete Box #${box.number}${box.name?' — '+box.name:''}?`)) return;
+  if(!confirm(`Delete Box ${boxIdentifier(box)}${box.name?' — '+box.name:''}?`)) return;
   await dbDelete(id);
   boxes = boxes.filter(b=>b.id!==id);
   render();
@@ -335,6 +349,8 @@ function toast(msg){
 document.getElementById('addFab').onclick = ()=> openForm(null);
 
 function openForm(id){
+  document.getElementById('formOverlay')?.remove();
+
   editingId = id;
   const box = id ? boxes.find(b=>b.id===id) : null;
   currentPhotoDataUrl = box ? (box.photo||null) : null;
@@ -345,7 +361,7 @@ function openForm(id){
   overlay.id = 'formOverlay';
   overlay.innerHTML = `
     <div class="sheet">
-      <h2>${box ? 'Edit Box #'+box.number : 'New Box'}</h2>
+      <h2>${box ? 'Edit Box '+boxIdentifier(box) : 'New Box'}</h2>
 
       <div class="photo-picker" id="photoPicker">
         ${currentPhotoDataUrl ? `<img src="${currentPhotoDataUrl}">` : `<div class="hint">📷 Tap to take or choose a photo of the box contents + label</div>`}
@@ -360,8 +376,8 @@ function openForm(id){
 
       <div class="two-col">
         <div class="field">
-          <label>Box #</label>
-          <input type="text" id="fieldNumber" inputmode="numeric" value="${box ? box.number : nextBoxNumber()}">
+          <label>Number in room</label>
+          <input type="text" id="fieldNumber" inputmode="numeric" value="${box ? box.number : nextNumberForRoom('', null)}">
         </div>
         <div class="field">
           <label>Status</label>
@@ -403,6 +419,9 @@ function openForm(id){
   document.getElementById('aiDetectBtn').onclick = runAiDetect;
   document.getElementById('apiKeyBtn').onclick = promptApiKey;
   document.getElementById('saveBtn').onclick = saveForm;
+  document.getElementById('fieldRoom').addEventListener('input', ()=>{
+    document.getElementById('fieldNumber').value = nextNumberForRoom(document.getElementById('fieldRoom').value, editingId);
+  });
 
   updateAiButtonState();
 }
@@ -509,6 +528,7 @@ async function runAiDetect(){
     }
     if(parsed.suggestedRoom && !document.getElementById('fieldRoom').value){
       document.getElementById('fieldRoom').value = parsed.suggestedRoom;
+      document.getElementById('fieldNumber').value = nextNumberForRoom(parsed.suggestedRoom, editingId);
     }
     if(parsed.boxLabel && !document.getElementById('fieldName').value){
       document.getElementById('fieldName').value = parsed.boxLabel;
@@ -524,9 +544,9 @@ async function runAiDetect(){
 }
 
 async function saveForm(){
-  const number = parseInt(document.getElementById('fieldNumber').value,10) || nextBoxNumber();
-  const name = document.getElementById('fieldName').value.trim();
   const room = document.getElementById('fieldRoom').value.trim();
+  const number = parseInt(document.getElementById('fieldNumber').value,10) || nextNumberForRoom(room, editingId);
+  const name = document.getElementById('fieldName').value.trim();
   const contents = document.getElementById('fieldContents').value.trim();
   const status = document.getElementById('fieldStatus').value;
 
@@ -546,7 +566,7 @@ async function saveForm(){
   if(!editingId){ box.id = savedId; boxes.push(box); }
   else { const idx = boxes.findIndex(b=>b.id===editingId); boxes[idx] = box; }
 
-  boxes.sort((a,b)=> (a.number||0) - (b.number||0));
+  sortBoxes();
   document.getElementById('formOverlay').remove();
   render();
   toast(editingId ? 'Box updated' : 'Box added');
@@ -591,8 +611,8 @@ function downloadBlob(content, filename, type){
 }
 
 function exportCsv(){
-  const rows = [['Box #','Name','Room','Status','Contents']];
-  boxes.forEach(b=> rows.push([b.number, b.name||'', b.room||'', b.status||'', (b.contents||'').replace(/\n/g,'; ')]));
+  const rows = [['Box ID','Name','Room','Status','Contents']];
+  boxes.forEach(b=> rows.push([boxIdentifier(b), b.name||'', b.room||'', b.status||'', (b.contents||'').replace(/\n/g,'; ')]));
   const csv = rows.map(r=> r.map(v=> `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   downloadBlob(csv, 'moving-boxes.csv', 'text/csv');
   toast('CSV exported');
@@ -618,7 +638,7 @@ function importJson(){
         await dbPut(rest);
       }
       boxes = await dbGetAll();
-      boxes.sort((a,b)=> (a.number||0) - (b.number||0));
+      sortBoxes();
       render();
       toast(`Imported ${imported.length} box(es)`);
     }catch(err){
