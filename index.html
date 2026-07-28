@@ -115,47 +115,56 @@
 <div id="modalRoot"></div>
 
 <script>
-/* ---------- IndexedDB layer ---------- */
-const DB_NAME = 'MovingBoxesDB', STORE = 'boxes';
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = ()=>{
-      const db = req.result;
-      if(!db.objectStoreNames.contains(STORE)){
-        db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
-      }
-    };
-    req.onsuccess = ()=>resolve(req.result);
-    req.onerror = ()=>reject(req.error);
+/* ---------- Google Sheets backend (Apps Script Web App) ---------- */
+const WEBAPP_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
+const isConfigured = WEBAPP_URL.startsWith('http');
+
+async function callApi(payload){
+  const res = await fetch(WEBAPP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
   });
+  if(!res.ok) throw new Error(`Sheet API error ${res.status}`);
+  const data = await res.json();
+  if(data && data.error) throw new Error(data.error);
+  return data;
 }
+
+function rowToBox(row){
+  return {
+    id: row.id, number: Number(row.number), name: row.name || '', room: row.room || '',
+    contents: row.contents || '', status: row.status || 'Packed', photo: row.photo_url || null,
+    createdAt: row.created_at, updatedAt: row.updated_at
+  };
+}
+function boxToRow(box){
+  return {
+    id: box.id, number: box.number, name: box.name || '', room: box.room || '',
+    contents: box.contents || '', status: box.status || 'Packed', photo_url: box.photo || ''
+  };
+}
+
 async function dbGetAll(){
-  const db = await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx = db.transaction(STORE,'readonly');
-    const req = tx.objectStore(STORE).getAll();
-    req.onsuccess = ()=>resolve(req.result);
-    req.onerror = ()=>reject(req.error);
-  });
+  const rows = await callApi({ action: 'list' });
+  return rows.map(rowToBox);
 }
 async function dbPut(box){
-  const db = await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx = db.transaction(STORE,'readwrite');
-    const req = tx.objectStore(STORE).put(box);
-    req.onsuccess = ()=>resolve(req.result);
-    req.onerror = ()=>reject(req.error);
-  });
+  const row = boxToRow(box);
+  const saved = box.id
+    ? await callApi({ action: 'update', box: row })
+    : await callApi({ action: 'create', box: row });
+  return rowToBox(saved);
 }
 async function dbDelete(id){
-  const db = await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx = db.transaction(STORE,'readwrite');
-    const req = tx.objectStore(STORE).delete(id);
-    req.onsuccess = ()=>resolve();
-    req.onerror = ()=>reject(req.error);
-  });
+  await callApi({ action: 'delete', id });
+}
+async function resolvePhotoUrl(photo){
+  if(photo && photo.startsWith('data:')){
+    const { url } = await callApi({ action: 'uploadPhoto', dataUrl: photo });
+    return url;
+  }
+  return photo || null;
 }
 
 /* ---------- State ---------- */
@@ -179,11 +188,40 @@ function roomColor(room){
 
 /* ---------- Init ---------- */
 async function init(){
-  boxes = await dbGetAll();
-  sortBoxes();
-  render();
+  if(!isConfigured){
+    document.getElementById('addFab').style.display = 'none';
+    document.querySelector('main').innerHTML = `<div class="empty-state"><div class="big">⚙️</div><div>Shared sync isn't set up yet — add your Apps Script Web App URL in index.html (WEBAPP_URL).</div></div>`;
+    return;
+  }
+  try{
+    boxes = await dbGetAll();
+    sortBoxes();
+    render();
+  }catch(err){
+    console.error(err);
+    document.querySelector('main').innerHTML = `<div class="empty-state"><div class="big">⚠️</div><div>Couldn't load shared boxes (${escapeHtml(err.message)}). Check your connection and reload.</div></div>`;
+    return;
+  }
+  startSync();
 }
 init();
+
+function startSync(){
+  setInterval(refreshFromServer, 10000);
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible') refreshFromServer();
+  });
+}
+async function refreshFromServer(){
+  if(document.getElementById('formOverlay')) return;
+  try{
+    boxes = await dbGetAll();
+    sortBoxes();
+    render();
+  }catch(err){
+    console.error('Sync failed', err);
+  }
+}
 
 /* ---------- Identifiers ---------- */
 function sortBoxes(){
@@ -550,26 +588,33 @@ async function saveForm(){
   const contents = document.getElementById('fieldContents').value.trim();
   const status = document.getElementById('fieldStatus').value;
 
-  const box = editingId
-    ? { ...boxes.find(b=>b.id===editingId) }
-    : { createdAt: new Date().toISOString() };
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
 
-  box.number = number;
-  box.name = name;
-  box.room = room;
-  box.contents = contents;
-  box.status = status;
-  box.photo = currentPhotoDataUrl;
-  box.updatedAt = new Date().toISOString();
+  try{
+    const box = editingId ? { ...boxes.find(b=>b.id===editingId) } : {};
+    box.number = number;
+    box.name = name;
+    box.room = room;
+    box.contents = contents;
+    box.status = status;
+    box.photo = await resolvePhotoUrl(currentPhotoDataUrl);
 
-  const savedId = await dbPut(box);
-  if(!editingId){ box.id = savedId; boxes.push(box); }
-  else { const idx = boxes.findIndex(b=>b.id===editingId); boxes[idx] = box; }
+    const saved = await dbPut(box);
+    const idx = boxes.findIndex(b=>b.id===saved.id);
+    if(idx === -1) boxes.push(saved); else boxes[idx] = saved;
 
-  sortBoxes();
-  document.getElementById('formOverlay').remove();
-  render();
-  toast(editingId ? 'Box updated' : 'Box added');
+    sortBoxes();
+    document.getElementById('formOverlay').remove();
+    render();
+    toast(editingId ? 'Box updated' : 'Box added');
+  }catch(err){
+    console.error(err);
+    alert('Could not save box: ' + err.message);
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Box';
+  }
 }
 
 /* ---------- Menu: export / import / print ---------- */
@@ -634,7 +679,8 @@ function importJson(){
       const imported = JSON.parse(text);
       if(!Array.isArray(imported)) throw new Error('Invalid file');
       for(const b of imported){
-        const { id, ...rest } = b;
+        const { id, createdAt, updatedAt, ...rest } = b;
+        rest.photo = await resolvePhotoUrl(rest.photo);
         await dbPut(rest);
       }
       boxes = await dbGetAll();
