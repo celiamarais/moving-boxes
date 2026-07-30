@@ -37,6 +37,7 @@
   .card .photo{aspect-ratio:4/3;background:var(--chip) center/cover no-repeat;position:relative;cursor:pointer;}
   .card .photo.empty::after{content:"📦";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.4;}
   .card .status-dot{position:absolute;top:8px;right:8px;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(4px);}
+  .card .photo-count{position:absolute;bottom:8px;right:8px;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(4px);}
   .card .body{padding:10px 12px 12px 12px;display:flex;flex-direction:column;gap:6px;flex:1;}
   .card .title-row{display:flex;align-items:baseline;gap:6px;}
   .card .num{font-weight:700;font-size:15px;}
@@ -60,10 +61,12 @@
   .field input[type=text], .field select, .field textarea{width:100%;padding:10px 11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;font-family:inherit;}
   .field textarea{min-height:80px;resize:vertical;}
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .photo-picker{border:1.5px dashed var(--line);border-radius:12px;padding:14px;text-align:center;cursor:pointer;position:relative;background:var(--card);margin-bottom:12px;}
-  .photo-picker img{max-width:100%;max-height:220px;border-radius:8px;display:block;margin:0 auto;}
-  .photo-picker .hint{color:var(--sub);font-size:13px;}
-  .photo-picker input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .photo-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;-webkit-overflow-scrolling:touch;}
+  .photo-thumb{position:relative;flex:none;width:84px;height:84px;border-radius:10px;overflow:hidden;background:var(--chip);}
+  .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-thumb .remove{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:13px;line-height:20px;text-align:center;cursor:pointer;padding:0;}
+  .photo-add-tile{flex:none;width:84px;height:84px;border-radius:10px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--sub);cursor:pointer;position:relative;background:var(--card);}
+  .photo-add-tile input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
   .ai-row{display:flex;gap:8px;margin-bottom:14px;}
   .ai-btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);background:transparent;font-size:13.5px;font-weight:600;cursor:pointer;}
   .ai-btn:disabled{opacity:.4;cursor:default;}
@@ -77,6 +80,10 @@
   .menu button:hover{background:var(--chip);}
   .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;}
   .lightbox img{max-width:100%;max-height:100%;border-radius:8px;}
+  .lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer;}
+  .lightbox-nav.prev{left:12px;}
+  .lightbox-nav.next{right:12px;}
+  .lightbox-counter{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;padding:4px 12px;border-radius:999px;font-size:13px;}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:13.5px;z-index:70;box-shadow:var(--shadow);}
   @media print{
     header,.fab,.overlay{display:none!important;}
@@ -131,17 +138,20 @@ async function callApi(payload){
   return data;
 }
 
+function splitPhotos(s){
+  return String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
+}
 function rowToBox(row){
   return {
     id: row.id, number: Number(row.number), name: row.name || '', room: row.room || '',
-    contents: row.contents || '', status: row.status || 'Packed', photo: row.photo_url || null,
+    contents: row.contents || '', status: row.status || 'Packed', photos: splitPhotos(row.photo_url),
     createdAt: row.created_at, updatedAt: row.updated_at
   };
 }
 function boxToRow(box){
   return {
     id: box.id, number: box.number, name: box.name || '', room: box.room || '',
-    contents: box.contents || '', status: box.status || 'Packed', photo_url: box.photo || ''
+    contents: box.contents || '', status: box.status || 'Packed', photo_url: (box.photos||[]).join('\n')
   };
 }
 
@@ -172,7 +182,7 @@ let boxes = [];
 let activeRoomFilter = null;
 let searchQuery = '';
 let editingId = null;
-let currentPhotoDataUrl = null;
+let currentPhotos = [];
 
 const ROOM_PRESETS = ['Kitchen','Living Room','Bedroom','Bathroom','Office','Garage','Kids Room','Dining Room','Storage / Basement','Outdoor','Other'];
 const ROOM_COLORS = {};
@@ -304,12 +314,14 @@ function renderGrid(){
   }
   empty.style.display='none';
   grid.innerHTML = list.map(b=>{
-    const photoStyle = b.photo ? `style="background-image:url('${b.photo}')"` : '';
+    const photos = b.photos || [];
+    const photoStyle = photos[0] ? `style="background-image:url('${photos[0]}')"` : '';
     const contentsLines = (b.contents||'').split('\n').filter(Boolean);
     return `
     <div class="card" data-id="${b.id}">
-      <div class="photo ${b.photo?'':'empty'}" ${photoStyle} data-action="view-photo">
+      <div class="photo ${photos[0]?'':'empty'}" ${photoStyle} data-action="view-photo">
         ${b.status ? `<div class="status-dot">${escapeHtml(b.status)}</div>` : ''}
+        ${photos.length>1 ? `<div class="photo-count">📷 ${photos.length}</div>` : ''}
       </div>
       <div class="body">
         <div class="title-row">
@@ -333,7 +345,7 @@ function renderGrid(){
     const photoEl = card.querySelector('[data-action="view-photo"]');
     photoEl.onclick = ()=>{
       const box = boxes.find(x=>x.id===id);
-      if(box && box.photo) openLightbox(box.photo);
+      if(box && box.photos && box.photos.length) openLightbox(box.photos, 0);
     };
   });
 }
@@ -348,12 +360,28 @@ document.getElementById('searchInput').addEventListener('input', e=>{
 });
 
 /* ---------- Lightbox ---------- */
-function openLightbox(src){
+function openLightbox(photos, startIndex){
+  let idx = startIndex || 0;
   const root = document.getElementById('modalRoot');
   const div = document.createElement('div');
   div.className = 'lightbox';
-  div.innerHTML = `<img src="${src}">`;
-  div.onclick = ()=> div.remove();
+
+  function renderLightbox(){
+    div.innerHTML = `
+      <img src="${photos[idx]}">
+      ${photos.length>1 ? `
+        <button class="lightbox-nav prev" type="button" aria-label="Previous">‹</button>
+        <button class="lightbox-nav next" type="button" aria-label="Next">›</button>
+        <div class="lightbox-counter">${idx+1} / ${photos.length}</div>
+      ` : ''}
+    `;
+    if(photos.length>1){
+      div.querySelector('.prev').onclick = (e)=>{ e.stopPropagation(); idx = (idx-1+photos.length)%photos.length; renderLightbox(); };
+      div.querySelector('.next').onclick = (e)=>{ e.stopPropagation(); idx = (idx+1)%photos.length; renderLightbox(); };
+    }
+  }
+  renderLightbox();
+  div.onclick = (e)=>{ if(e.target === div) div.remove(); };
   root.appendChild(div);
 }
 
@@ -391,7 +419,7 @@ function openForm(id){
 
   editingId = id;
   const box = id ? boxes.find(b=>b.id===id) : null;
-  currentPhotoDataUrl = box ? (box.photo||null) : null;
+  currentPhotos = box ? [...(box.photos||[])] : [];
 
   const root = document.getElementById('modalRoot');
   const overlay = document.createElement('div');
@@ -401,13 +429,13 @@ function openForm(id){
     <div class="sheet">
       <h2>${box ? 'Edit Box '+boxIdentifier(box) : 'New Box'}</h2>
 
-      <div class="photo-picker" id="photoPicker">
-        ${currentPhotoDataUrl ? `<img src="${currentPhotoDataUrl}">` : `<div class="hint">📷 Tap to take a photo or choose one from your library</div>`}
-        <input type="file" accept="image/*" id="photoInput">
+      <div class="field">
+        <label>Photos</label>
+        <div class="photo-strip" id="photoThumbs"></div>
       </div>
 
       <div class="ai-row">
-        <button class="ai-btn" id="aiDetectBtn">✨ Auto-detect contents from photo</button>
+        <button class="ai-btn" id="aiDetectBtn">✨ Auto-detect contents from photos</button>
         <button class="icon-btn" id="apiKeyBtn" title="Set API key">🔑</button>
       </div>
       <div class="ai-status" id="aiStatus"></div>
@@ -453,7 +481,6 @@ function openForm(id){
 
   overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
   document.getElementById('cancelBtn').onclick = ()=> overlay.remove();
-  document.getElementById('photoInput').onchange = handlePhotoChange;
   document.getElementById('aiDetectBtn').onclick = runAiDetect;
   document.getElementById('apiKeyBtn').onclick = promptApiKey;
   document.getElementById('saveBtn').onclick = saveForm;
@@ -461,18 +488,38 @@ function openForm(id){
     document.getElementById('fieldNumber').value = nextNumberForRoom(document.getElementById('fieldRoom').value, editingId);
   });
 
+  renderPhotoThumbs();
+}
+
+function renderPhotoThumbs(){
+  const strip = document.getElementById('photoThumbs');
+  strip.innerHTML = currentPhotos.map((url, i) => `
+    <div class="photo-thumb">
+      <img src="${url}">
+      <button class="remove" type="button" data-i="${i}">×</button>
+    </div>
+  `).join('') + `
+    <div class="photo-add-tile">
+      <span>📷</span>
+      <input type="file" accept="image/*" multiple id="photoInput">
+    </div>
+  `;
+  strip.querySelectorAll('.remove').forEach(btn=>{
+    btn.onclick = ()=>{
+      currentPhotos.splice(Number(btn.getAttribute('data-i')), 1);
+      renderPhotoThumbs();
+    };
+  });
+  document.getElementById('photoInput').onchange = handlePhotoChange;
   updateAiButtonState();
 }
 
 function handlePhotoChange(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  resizeImageFile(file, 1400, 0.82).then(dataUrl=>{
-    currentPhotoDataUrl = dataUrl;
-    const picker = document.getElementById('photoPicker');
-    picker.innerHTML = `<img src="${dataUrl}"><input type="file" accept="image/*" id="photoInput">`;
-    document.getElementById('photoInput').onchange = handlePhotoChange;
-    updateAiButtonState();
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+  Promise.all(files.map(f => resizeImageFile(f, 1400, 0.82))).then(dataUrls=>{
+    currentPhotos.push(...dataUrls);
+    renderPhotoThumbs();
   });
 }
 
@@ -500,12 +547,17 @@ function resizeImageFile(file, maxDim, quality){
   });
 }
 
+function newPhotos(){
+  return currentPhotos.filter(p => p.startsWith('data:'));
+}
+
 function updateAiButtonState(){
   const btn = document.getElementById('aiDetectBtn');
   if(!btn) return;
   const hasKey = !!localStorage.getItem('anthropicApiKey');
-  btn.disabled = !hasKey || !currentPhotoDataUrl;
-  btn.title = !hasKey ? 'Set your Anthropic API key first (🔑)' : (!currentPhotoDataUrl ? 'Add a photo first' : '');
+  const hasNewPhotos = newPhotos().length > 0;
+  btn.disabled = !hasKey || !hasNewPhotos;
+  btn.title = !hasKey ? 'Set your Anthropic API key first (🔑)' : (!hasNewPhotos ? 'Add a new photo first' : '');
 }
 
 function promptApiKey(){
@@ -520,16 +572,19 @@ function promptApiKey(){
 
 async function runAiDetect(){
   const key = localStorage.getItem('anthropicApiKey');
-  if(!key || !currentPhotoDataUrl) return;
+  const photosToAnalyze = newPhotos();
+  if(!key || photosToAnalyze.length === 0) return;
   const statusEl = document.getElementById('aiStatus');
   const btn = document.getElementById('aiDetectBtn');
   btn.disabled = true;
-  statusEl.textContent = 'Analyzing photo…';
+  statusEl.textContent = photosToAnalyze.length > 1 ? 'Analyzing photos…' : 'Analyzing photo…';
 
   try{
-    const match = currentPhotoDataUrl.match(/^data:(image\/\w+);base64,(.*)$/);
-    if(!match) throw new Error('Bad image data');
-    const mediaType = match[1], base64 = match[2];
+    const imageBlocks = photosToAnalyze.map(dataUrl=>{
+      const match = dataUrl.match(/^data:(image\/\w+);base64,(.*)$/);
+      if(!match) throw new Error('Bad image data');
+      return { type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } };
+    });
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -545,8 +600,8 @@ async function runAiDetect(){
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: 'This photo shows the inside of a moving box, possibly with a label/card showing a box number or name. Respond with ONLY raw JSON (no markdown fences) in this exact shape: {"boxLabel": string or null, "items": [string, ...], "suggestedRoom": one of ["Kitchen","Living Room","Bedroom","Bathroom","Office","Garage","Kids Room","Dining Room","Storage / Basement","Outdoor","Other"]}. List individual visible items concisely, one per array entry.' }
+            ...imageBlocks,
+            { type: 'text', text: 'These photos show the inside of a moving box (possibly multiple angles of the same box), possibly with a label/card showing a box number or name. Respond with ONLY raw JSON (no markdown fences) in this exact shape: {"boxLabel": string or null, "items": [string, ...], "suggestedRoom": one of ["Kitchen","Living Room","Bedroom","Bathroom","Office","Garage","Kids Room","Dining Room","Storage / Basement","Outdoor","Other"]}. Combine and de-duplicate visible items across all photos into one list.' }
           ]
         }]
       })
@@ -599,7 +654,7 @@ async function saveForm(){
     box.room = room;
     box.contents = contents;
     box.status = status;
-    box.photo = await resolvePhotoUrl(currentPhotoDataUrl);
+    box.photos = await Promise.all(currentPhotos.map(resolvePhotoUrl));
 
     const saved = await dbPut(box);
     const idx = boxes.findIndex(b=>b.id===saved.id);
@@ -680,7 +735,9 @@ function importJson(){
       if(!Array.isArray(imported)) throw new Error('Invalid file');
       for(const b of imported){
         const { id, createdAt, updatedAt, ...rest } = b;
-        rest.photo = await resolvePhotoUrl(rest.photo);
+        const photos = rest.photos || (rest.photo ? [rest.photo] : []);
+        delete rest.photo;
+        rest.photos = await Promise.all(photos.map(resolvePhotoUrl));
         await dbPut(rest);
       }
       boxes = await dbGetAll();
