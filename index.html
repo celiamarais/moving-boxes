@@ -402,8 +402,8 @@ function openForm(id){
       <h2>${box ? 'Edit Box '+boxIdentifier(box) : 'New Box'}</h2>
 
       <div class="photo-picker" id="photoPicker">
-        ${currentPhotoDataUrl ? `<img src="${currentPhotoDataUrl}">` : `<div class="hint">📷 Tap to take or choose a photo of the box contents + label</div>`}
-        <input type="file" accept="image/*" capture="environment" id="photoInput">
+        ${currentPhotoDataUrl ? `<img src="${currentPhotoDataUrl}">` : `<div class="hint">📷 Tap to take a photo or choose one from your library</div>`}
+        <input type="file" accept="image/*" id="photoInput">
       </div>
 
       <div class="ai-row">
@@ -470,7 +470,7 @@ function handlePhotoChange(e){
   resizeImageFile(file, 1400, 0.82).then(dataUrl=>{
     currentPhotoDataUrl = dataUrl;
     const picker = document.getElementById('photoPicker');
-    picker.innerHTML = `<img src="${dataUrl}"><input type="file" accept="image/*" capture="environment" id="photoInput">`;
+    picker.innerHTML = `<img src="${dataUrl}"><input type="file" accept="image/*" id="photoInput">`;
     document.getElementById('photoInput').onchange = handlePhotoChange;
     updateAiButtonState();
   });
