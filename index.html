@@ -3,95 +3,141 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Wishlist</title>
+<title>Wishlist Ledger</title>
 <style>
   :root{
-    --bg:#f5f4f1; --card:#ffffff; --ink:#1c1b19; --sub:#6b6862; --line:#e4e1da;
-    --accent:#b5502b; --accent-ink:#fff; --chip:#efece5; --danger:#b3261e; --ok:#2f7a3d;
-    --radius:14px; --shadow:0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+    --paper:#eef0e8; --card:#fffdf7; --ink:#1c2016; --sub:#6d7263; --line:#dde1d3;
+    --accent:#a8761e; --accent-ink:#fff8ea; --danger:#a3402f; --shadow:0 1px 2px rgba(20,20,10,.06), 0 6px 20px rgba(20,20,10,.05);
+    --font-display:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --font-mono:'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
   }
   @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#171614; --card:#221f1c; --ink:#f2efe9; --sub:#a39d92; --line:#332f2a;
-      --accent:#e08556; --accent-ink:#1c1b19; --chip:#2c2823; --danger:#ff6b60; --ok:#5fd47a;
-      --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.35);
+    :root:not([data-theme="light"]){
+      --paper:#15170f; --card:#1e2116; --ink:#eeeadb; --sub:#9a9c86; --line:#32361f;
+      --accent:#d9a949; --accent-ink:#1c1300; --danger:#e88370;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 6px 24px rgba(0,0,0,.4);
     }
   }
+  :root[data-theme="dark"]{
+    --paper:#15170f; --card:#1e2116; --ink:#eeeadb; --sub:#9a9c86; --line:#32361f;
+    --accent:#d9a949; --accent-ink:#1c1300; --danger:#e88370;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 6px 24px rgba(0,0,0,.4);
+  }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;}
-  header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 16px calc(10px + env(safe-area-inset-top,0)) 16px;}
-  header .row{display:flex;align-items:center;gap:10px;}
-  header h1{font-size:19px;margin:0;flex:1;letter-spacing:-.01em;}
-  header h1 span{color:var(--sub);font-weight:500;}
-  .icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:var(--ink);flex:none;}
-  .icon-btn:active{transform:scale(.95);}
-  .search{margin-top:10px;}
-  .search input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;}
-  main{padding:14px 16px 110px 16px;max-width:960px;margin:0 auto;}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;position:relative;transition:opacity .15s;}
-  .card.off{opacity:.5;}
-  .card .photo{aspect-ratio:1/1;background:var(--chip) center/cover no-repeat;position:relative;cursor:pointer;}
-  .card .photo.empty::after{content:"🛍️";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.4;}
-  .card .toggle-wrap{position:absolute;top:8px;left:8px;z-index:2;}
-  .card .toggle-wrap input{width:22px;height:22px;accent-color:var(--accent);cursor:pointer;}
-  .card .body{padding:10px 12px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;}
-  .card .name{font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;min-height:1.3em;}
-  .card .price{font-size:16px;font-weight:700;color:var(--accent);}
-  .card .link{font-size:12px;color:var(--sub);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .card-actions{display:flex;gap:6px;margin-top:auto;padding-top:6px;}
-  .card-actions button{flex:1;padding:7px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:12.5px;cursor:pointer;}
-  .card-actions button.danger{color:var(--danger);border-color:var(--danger);}
-  .empty-state{text-align:center;padding:60px 20px;color:var(--sub);}
-  .empty-state .big{font-size:40px;margin-bottom:10px;}
-  .fab{position:fixed;right:18px;bottom:calc(90px + env(safe-area-inset-bottom,0));width:58px;height:58px;border-radius:50%;background:var(--accent);color:var(--accent-ink);border:none;font-size:28px;box-shadow:var(--shadow);cursor:pointer;z-index:30;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased;}
+  ::selection{background:var(--accent);color:var(--accent-ink);}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  header{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--line);padding:18px 20px calc(12px + env(safe-area-inset-top,0)) 20px;}
+  header .row{display:flex;align-items:baseline;gap:12px;}
+  header h1{font-family:var(--font-display);font-weight:600;font-size:26px;margin:0;flex:1;letter-spacing:-.01em;text-wrap:balance;}
+  header .count{font-family:var(--font-mono);font-size:13px;color:var(--sub);font-variant-numeric:tabular-nums;}
+  .icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:19px;color:var(--ink);flex:none;line-height:1;}
+  .icon-btn:active{transform:scale(.94);}
+  .search{margin-top:12px;position:relative;}
+  .search input{width:100%;padding:8px 4px 9px 4px;border:none;border-bottom:1.5px solid var(--line);background:transparent;color:var(--ink);font-size:15px;font-family:var(--font-body);}
+  .search input::placeholder{color:var(--sub);}
+  .search input:focus{outline:none;border-bottom-color:var(--accent);}
+
+  main{padding:20px 20px 130px 20px;max-width:980px;margin:0 auto;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:visible;box-shadow:var(--shadow);display:flex;flex-direction:column;position:relative;transition:opacity .18s;}
+  .card.off{opacity:.48;}
+  .card .photo{aspect-ratio:1/1;background:var(--paper) center/cover no-repeat;position:relative;cursor:pointer;border-bottom:1px solid var(--line);}
+  .card .photo.empty::after{content:"🏷️";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;opacity:.35;}
+
+  .toggle-wrap{position:absolute;top:-9px;left:-9px;z-index:2;}
+  .toggle-wrap input{appearance:none;-webkit-appearance:none;width:26px;height:26px;margin:0;border-radius:50%;border:2px solid var(--sub);background:var(--card);cursor:pointer;box-shadow:var(--shadow);position:relative;}
+  .toggle-wrap input:checked{border-color:var(--accent);background:var(--accent);}
+  .toggle-wrap input:checked::after{content:'';position:absolute;inset:7px;border-radius:50%;background:var(--card);}
+  .toggle-wrap input:hover{border-color:var(--accent);}
+
+  .card .body{padding:12px 14px 14px 14px;display:flex;flex-direction:column;gap:5px;flex:1;}
+  .card .name{font-family:var(--font-display);font-size:16.5px;font-weight:600;line-height:1.28;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:1.28em;text-wrap:balance;}
+  .card .price{font-family:var(--font-mono);font-size:17px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;}
+  .card .link{font-size:11.5px;color:var(--sub);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px dotted var(--line);padding-bottom:1px;width:fit-content;max-width:100%;}
+  .card .link:hover{color:var(--accent);border-bottom-color:var(--accent);}
+
+  .card-actions{display:flex;gap:6px;margin-top:auto;padding-top:8px;}
+  .card-actions button{flex:1;padding:7px;border-radius:3px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:12px;font-family:var(--font-body);cursor:pointer;letter-spacing:.01em;}
+  .card-actions button:hover{border-color:var(--sub);}
+  .card-actions button.danger{color:var(--danger);border-color:var(--danger);opacity:.75;}
+  .card-actions button.danger:hover{opacity:1;}
+
+  .empty-state{text-align:center;padding:70px 20px;color:var(--sub);}
+  .empty-state .big{font-size:36px;margin-bottom:12px;opacity:.7;}
+  .empty-state .lead{font-family:var(--font-display);font-size:17px;color:var(--ink);margin-bottom:4px;}
+
+  .fab{position:fixed;right:20px;bottom:calc(96px + env(safe-area-inset-bottom,0));width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--accent-ink);border:none;font-size:26px;box-shadow:var(--shadow);cursor:pointer;z-index:30;font-family:var(--font-body);}
   .fab:active{transform:scale(.94);}
-  .totalbar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0)) 16px;z-index:25;display:flex;align-items:center;justify-content:space-between;gap:10px;}
-  .totalbar .label{font-size:12.5px;color:var(--sub);}
-  .totalbar .amount{font-size:20px;font-weight:700;}
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
+
+  .totalbar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:2px dashed var(--line);padding:14px 22px calc(14px + env(safe-area-inset-bottom,0)) 22px;z-index:25;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .totalbar::before,.totalbar::after{content:'';position:absolute;top:-11px;width:22px;height:22px;border-radius:50%;background:var(--paper);}
+  .totalbar::before{left:-11px;}
+  .totalbar::after{right:-11px;}
+  .totalbar .label{font-size:11.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.07em;}
+  .totalbar .amount{font-family:var(--font-mono);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;}
+
+  .overlay{position:fixed;inset:0;background:rgba(15,15,10,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
   @media (min-width:640px){.overlay{align-items:center;}}
-  .sheet{background:var(--bg);width:100%;max-width:480px;max-height:92vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0)) 16px;}
-  @media (min-width:640px){.sheet{border-radius:18px;max-height:85vh;}}
-  .sheet h2{margin:2px 0 14px 0;font-size:18px;}
-  .field{margin-bottom:12px;}
-  .field label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px;font-weight:600;}
-  .field input[type=text], .field input[type=number], .field input[type=url]{width:100%;padding:10px 11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;font-family:inherit;}
-  .photo-pick{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
-  .photo-preview{width:84px;height:84px;border-radius:10px;overflow:hidden;background:var(--chip);flex:none;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.5;}
+  .sheet{background:var(--paper);width:100%;max-width:480px;max-height:92vh;overflow-y:auto;border-radius:10px 10px 0 0;padding:22px 22px calc(20px + env(safe-area-inset-bottom,0)) 22px;border-top:1px solid var(--line);}
+  @media (min-width:640px){.sheet{border-radius:6px;max-height:85vh;border-top:none;}}
+  .sheet h2{font-family:var(--font-display);margin:0 0 18px 0;font-size:21px;font-weight:600;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:11px;color:var(--sub);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;}
+  .field input[type=text], .field input[type=number], .field input[type=url]{width:100%;padding:8px 2px;border:none;border-bottom:1.5px solid var(--line);background:transparent;color:var(--ink);font-size:16px;font-family:var(--font-body);}
+  .field input:focus{outline:none;border-bottom-color:var(--accent);}
+  .field input#fieldPrice{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+
+  .photo-pick{display:flex;gap:12px;align-items:center;margin-bottom:18px;}
+  .photo-preview{width:76px;height:76px;border-radius:3px;overflow:hidden;background:var(--card);border:1px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;opacity:.6;}
   .photo-preview img{width:100%;height:100%;object-fit:cover;display:block;}
-  .photo-pick-btn{position:relative;flex:1;padding:10px;border-radius:10px;border:1.5px dashed var(--line);text-align:center;font-size:13.5px;color:var(--sub);cursor:pointer;}
+  .photo-pick-btn{position:relative;flex:1;padding:11px;border-radius:3px;border:1.5px dashed var(--line);text-align:center;font-size:13px;color:var(--sub);cursor:pointer;letter-spacing:.02em;}
+  .photo-pick-btn:hover{border-color:var(--accent);color:var(--accent);}
   .photo-pick-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
-  .btn-row{display:flex;gap:10px;margin-top:6px;}
-  .btn{flex:1;padding:12px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;}
+
+  .btn-row{display:flex;gap:10px;margin-top:8px;}
+  .btn{flex:1;padding:12px;border-radius:3px;border:1px solid transparent;font-size:14.5px;font-weight:600;cursor:pointer;font-family:var(--font-body);letter-spacing:.01em;}
   .btn.primary{background:var(--accent);color:var(--accent-ink);}
-  .btn.ghost{background:var(--chip);color:var(--ink);}
-  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;}
-  .lightbox img{max-width:100%;max-height:100%;border-radius:8px;}
-  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:13.5px;z-index:70;box-shadow:var(--shadow);}
+  .btn.primary:hover{opacity:.92;}
+  .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line);}
+  .btn.ghost:hover{border-color:var(--sub);}
+
+  .lightbox{position:fixed;inset:0;background:rgba(10,10,6,.88);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .lightbox img{max-width:100%;max-height:100%;border-radius:4px;}
+
+  .toast{position:fixed;bottom:104px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:3px;font-size:13px;z-index:70;box-shadow:var(--shadow);}
+
+  @media (prefers-reduced-motion: reduce){
+    .card, .fab, .icon-btn{transition:none;}
+  }
 </style>
 </head>
 <body>
 
 <header>
   <div class="row">
-    <h1>🛍️ Wishlist <span id="countTag"></span></h1>
-    <button class="icon-btn" id="addFab2" title="Add product">+</button>
+    <h1>Wishlist Ledger</h1>
+    <span class="count" id="countTag"></span>
+    <button class="icon-btn" id="addFab2" title="Add product" aria-label="Add product">+</button>
   </div>
   <div class="search">
-    <input type="text" id="searchInput" placeholder="Search products…">
+    <input type="text" id="searchInput" placeholder="Search your wishlist…">
   </div>
 </header>
 
 <main>
   <div class="grid" id="grid"></div>
   <div class="empty-state" id="emptyState" style="display:none;">
-    <div class="big">🛍️</div>
-    <div>No products yet. Tap + to add one you saw online.</div>
+    <div class="big">🏷️</div>
+    <div class="lead">Nothing saved yet</div>
+    <div>Tap + to add the first thing you spotted online.</div>
   </div>
 </main>
 
-<button class="fab" id="addFab">+</button>
+<button class="fab" id="addFab" aria-label="Add product">+</button>
 
 <div class="totalbar" id="totalBar" style="display:none;">
   <div>
@@ -140,18 +186,20 @@ function renderGrid(){
   const list = filteredItems();
   const grid = document.getElementById('grid');
   const empty = document.getElementById('emptyState');
-  document.getElementById('countTag').textContent = items.length ? `· ${items.length}` : '';
+  document.getElementById('countTag').textContent = items.length ? `${items.length}` : '';
 
   if(items.length === 0){
     grid.innerHTML=''; empty.style.display='block';
-    empty.querySelector('.big').textContent = '🛍️';
-    empty.querySelector('div:last-child').textContent = 'No products yet. Tap + to add one you saw online.';
+    empty.querySelector('.big').textContent = '🏷️';
+    empty.querySelector('.lead').textContent = 'Nothing saved yet';
+    empty.querySelector('div:last-child').textContent = 'Tap + to add the first thing you spotted online.';
     return;
   }
   if(list.length === 0){
     grid.innerHTML=''; empty.style.display='block';
     empty.querySelector('.big').textContent = '🔍';
-    empty.querySelector('div:last-child').textContent = 'No products match your search.';
+    empty.querySelector('.lead').textContent = 'No matches';
+    empty.querySelector('div:last-child').textContent = 'Try a different search term.';
     return;
   }
   empty.style.display='none';
@@ -160,7 +208,7 @@ function renderGrid(){
     const photoStyle = it.photo ? `style="background-image:url('${it.photo}')"` : '';
     return `
     <div class="card ${it.included===false?'off':''}" data-id="${it.id}">
-      <div class="toggle-wrap"><input type="checkbox" data-action="toggle" ${it.included!==false?'checked':''}></div>
+      <div class="toggle-wrap"><input type="checkbox" data-action="toggle" ${it.included!==false?'checked':''} aria-label="Include in total"></div>
       <div class="photo ${it.photo?'':'empty'}" ${photoStyle} data-action="view-photo"></div>
       <div class="body">
         <div class="name">${escapeHtml(it.name||'Untitled product')}</div>
@@ -265,7 +313,7 @@ function openForm(id){
       <h2>${it ? 'Edit Product' : 'New Product'}</h2>
 
       <div class="photo-pick">
-        <div class="photo-preview" id="photoPreview">${currentPhoto ? `<img src="${currentPhoto}">` : '🛍️'}</div>
+        <div class="photo-preview" id="photoPreview">${currentPhoto ? `<img src="${currentPhoto}">` : '🏷️'}</div>
         <label class="photo-pick-btn">
           Choose photo
           <input type="file" accept="image/*" id="photoInput">
