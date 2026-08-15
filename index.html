@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Moving Boxes</title>
+<title>Wishlist</title>
 <style>
   :root{
     --bg:#f5f4f1; --card:#ffffff; --ink:#1c1b19; --sub:#6b6862; --line:#e4e1da;
-    --accent:#b5502b; --accent-ink:#fff; --chip:#efece5; --danger:#b3261e;
+    --accent:#b5502b; --accent-ink:#fff; --chip:#efece5; --danger:#b3261e; --ok:#2f7a3d;
     --radius:14px; --shadow:0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
   }
   @media (prefers-color-scheme: dark){
     :root{
       --bg:#171614; --card:#221f1c; --ink:#f2efe9; --sub:#a39d92; --line:#332f2a;
-      --accent:#e08556; --accent-ink:#1c1b19; --chip:#2c2823; --danger:#ff6b60;
+      --accent:#e08556; --accent-ink:#1c1b19; --chip:#2c2823; --danger:#ff6b60; --ok:#5fd47a;
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.35);
     }
   }
@@ -25,311 +25,147 @@
   header h1 span{color:var(--sub);font-weight:500;}
   .icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:var(--ink);flex:none;}
   .icon-btn:active{transform:scale(.95);}
-  .search{margin-top:10px;display:flex;gap:8px;}
-  .search input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;}
-  .chips{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
-  .chip{flex:none;padding:6px 12px;border-radius:999px;background:var(--chip);border:1px solid transparent;font-size:13px;color:var(--sub);cursor:pointer;white-space:nowrap;}
-  .chip.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
-  main{padding:14px 16px 100px 16px;max-width:960px;margin:0 auto;}
-  .stats{display:flex;gap:8px;margin:2px 0 14px 0;color:var(--sub);font-size:13px;}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;}
-  .card .photo{aspect-ratio:4/3;background:var(--chip) center/cover no-repeat;position:relative;cursor:pointer;}
-  .card .photo.empty::after{content:"📦";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.4;}
-  .card .status-dot{position:absolute;top:8px;right:8px;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(4px);}
-  .card .photo-count{position:absolute;bottom:8px;right:8px;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(4px);}
-  .card .body{padding:10px 12px 12px 12px;display:flex;flex-direction:column;gap:6px;flex:1;}
-  .card .title-row{display:flex;align-items:baseline;gap:6px;}
-  .card .num{font-weight:700;font-size:15px;}
-  .card .name{font-size:14px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .room-badge{align-self:flex-start;font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--chip);color:var(--ink);}
-  .contents-preview{font-size:12.5px;color:var(--sub);line-height:1.4;white-space:pre-line;max-height:3.6em;overflow:hidden;}
+  .search{margin-top:10px;}
+  .search input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;}
+  main{padding:14px 16px 110px 16px;max-width:960px;margin:0 auto;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;position:relative;transition:opacity .15s;}
+  .card.off{opacity:.5;}
+  .card .photo{aspect-ratio:1/1;background:var(--chip) center/cover no-repeat;position:relative;cursor:pointer;}
+  .card .photo.empty::after{content:"🛍️";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.4;}
+  .card .toggle-wrap{position:absolute;top:8px;left:8px;z-index:2;}
+  .card .toggle-wrap input{width:22px;height:22px;accent-color:var(--accent);cursor:pointer;}
+  .card .body{padding:10px 12px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;}
+  .card .name{font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;min-height:1.3em;}
+  .card .price{font-size:16px;font-weight:700;color:var(--accent);}
+  .card .link{font-size:12px;color:var(--sub);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .card-actions{display:flex;gap:6px;margin-top:auto;padding-top:6px;}
   .card-actions button{flex:1;padding:7px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:12.5px;cursor:pointer;}
   .card-actions button.danger{color:var(--danger);border-color:var(--danger);}
   .empty-state{text-align:center;padding:60px 20px;color:var(--sub);}
   .empty-state .big{font-size:40px;margin-bottom:10px;}
-  .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0));width:58px;height:58px;border-radius:50%;background:var(--accent);color:var(--accent-ink);border:none;font-size:28px;box-shadow:var(--shadow);cursor:pointer;z-index:30;}
+  .fab{position:fixed;right:18px;bottom:calc(90px + env(safe-area-inset-bottom,0));width:58px;height:58px;border-radius:50%;background:var(--accent);color:var(--accent-ink);border:none;font-size:28px;box-shadow:var(--shadow);cursor:pointer;z-index:30;}
   .fab:active{transform:scale(.94);}
+  .totalbar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0)) 16px;z-index:25;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .totalbar .label{font-size:12.5px;color:var(--sub);}
+  .totalbar .amount{font-size:20px;font-weight:700;}
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
   @media (min-width:640px){.overlay{align-items:center;}}
-  .sheet{background:var(--bg);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0)) 16px;}
+  .sheet{background:var(--bg);width:100%;max-width:480px;max-height:92vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0)) 16px;}
   @media (min-width:640px){.sheet{border-radius:18px;max-height:85vh;}}
   .sheet h2{margin:2px 0 14px 0;font-size:18px;}
   .field{margin-bottom:12px;}
   .field label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px;font-weight:600;}
-  .field input[type=text], .field select, .field textarea{width:100%;padding:10px 11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;font-family:inherit;}
-  .field textarea{min-height:80px;resize:vertical;}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .photo-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;-webkit-overflow-scrolling:touch;}
-  .photo-thumb{position:relative;flex:none;width:84px;height:84px;border-radius:10px;overflow:hidden;background:var(--chip);}
-  .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-  .photo-thumb .remove{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:13px;line-height:20px;text-align:center;cursor:pointer;padding:0;}
-  .photo-add-tile{flex:none;width:84px;height:84px;border-radius:10px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--sub);cursor:pointer;position:relative;background:var(--card);}
-  .photo-add-tile input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
-  .ai-row{display:flex;gap:8px;margin-bottom:14px;}
-  .ai-btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);background:transparent;font-size:13.5px;font-weight:600;cursor:pointer;}
-  .ai-btn:disabled{opacity:.4;cursor:default;}
-  .ai-status{font-size:12.5px;color:var(--sub);margin:-6px 0 12px 0;min-height:16px;}
+  .field input[type=text], .field input[type=number], .field input[type=url]{width:100%;padding:10px 11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;font-family:inherit;}
+  .photo-pick{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
+  .photo-preview{width:84px;height:84px;border-radius:10px;overflow:hidden;background:var(--chip);flex:none;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.5;}
+  .photo-preview img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-pick-btn{position:relative;flex:1;padding:10px;border-radius:10px;border:1.5px dashed var(--line);text-align:center;font-size:13.5px;color:var(--sub);cursor:pointer;}
+  .photo-pick-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
   .btn-row{display:flex;gap:10px;margin-top:6px;}
   .btn{flex:1;padding:12px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;}
   .btn.primary{background:var(--accent);color:var(--accent-ink);}
   .btn.ghost{background:var(--chip);color:var(--ink);}
-  .menu{position:absolute;right:16px;top:56px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:40;overflow:hidden;min-width:190px;}
-  .menu button{display:block;width:100%;text-align:left;padding:11px 14px;border:none;background:none;color:var(--ink);font-size:14px;cursor:pointer;}
-  .menu button:hover{background:var(--chip);}
   .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;}
   .lightbox img{max-width:100%;max-height:100%;border-radius:8px;}
-  .lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer;}
-  .lightbox-nav.prev{left:12px;}
-  .lightbox-nav.next{right:12px;}
-  .lightbox-counter{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;padding:4px 12px;border-radius:999px;font-size:13px;}
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:13.5px;z-index:70;box-shadow:var(--shadow);}
-  @media print{
-    header,.fab,.overlay{display:none!important;}
-    body{background:#fff;color:#000;}
-    .grid{display:block;}
-    .card{box-shadow:none;border:none;border-bottom:1px solid #ccc;border-radius:0;page-break-inside:avoid;flex-direction:row;margin-bottom:10px;}
-    .card .photo{width:90px;height:70px;flex:none;aspect-ratio:auto;}
-    .contents-preview{max-height:none;}
-  }
+  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:13.5px;z-index:70;box-shadow:var(--shadow);}
 </style>
 </head>
 <body>
 
 <header>
   <div class="row">
-    <h1>📦 Moving Boxes <span id="countTag"></span></h1>
-    <button class="icon-btn" id="menuBtn" title="Export / Settings">⋯</button>
+    <h1>🛍️ Wishlist <span id="countTag"></span></h1>
+    <button class="icon-btn" id="addFab2" title="Add product">+</button>
   </div>
   <div class="search">
-    <input type="text" id="searchInput" placeholder="Search box ID, name, room, or contents…">
+    <input type="text" id="searchInput" placeholder="Search products…">
   </div>
-  <div class="chips" id="roomChips"></div>
 </header>
 
 <main>
-  <div class="stats" id="statsLine"></div>
   <div class="grid" id="grid"></div>
   <div class="empty-state" id="emptyState" style="display:none;">
-    <div class="big">📦</div>
-    <div>No boxes yet. Tap + to add your first box.</div>
+    <div class="big">🛍️</div>
+    <div>No products yet. Tap + to add one you saw online.</div>
   </div>
 </main>
 
 <button class="fab" id="addFab">+</button>
 
+<div class="totalbar" id="totalBar" style="display:none;">
+  <div>
+    <div class="label" id="totalLabel">0 selected</div>
+    <div class="amount" id="totalAmount">$0.00</div>
+  </div>
+</div>
+
 <div id="modalRoot"></div>
 
 <script>
-/* ---------- Google Sheets backend (Apps Script Web App) ---------- */
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxxSebq_QSMVMF6gD_vQUiZqGYE4i3mZClFtEhH6Dj4YUv4_Ppp_OeikTb5L9yWxInS/exec';
-const isConfigured = WEBAPP_URL.startsWith('http');
-
-async function callApi(payload){
-  const res = await fetch(WEBAPP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
-  });
-  if(!res.ok) throw new Error(`Sheet API error ${res.status}`);
-  const data = await res.json();
-  if(data && data.error) throw new Error(data.error);
-  return data;
-}
-
-function splitPhotos(s){
-  return String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
-}
-function rowToBox(row){
-  return {
-    id: row.id, number: Number(row.number), name: row.name || '', room: row.room || '',
-    contents: row.contents || '', status: row.status || 'Packed', photos: splitPhotos(row.photo_url),
-    createdAt: row.created_at, updatedAt: row.updated_at
-  };
-}
-function boxToRow(box){
-  return {
-    id: box.id, number: box.number, name: box.name || '', room: box.room || '',
-    contents: box.contents || '', status: box.status || 'Packed', photo_url: (box.photos||[]).join('\n')
-  };
-}
-
-async function dbGetAll(){
-  const rows = await callApi({ action: 'list' });
-  return rows.map(rowToBox);
-}
-async function dbPut(box){
-  const row = boxToRow(box);
-  const saved = box.id
-    ? await callApi({ action: 'update', box: row })
-    : await callApi({ action: 'create', box: row });
-  return rowToBox(saved);
-}
-async function dbDelete(id){
-  await callApi({ action: 'delete', id });
-}
-async function resolvePhotoUrl(photo){
-  if(photo && photo.startsWith('data:')){
-    const { url } = await callApi({ action: 'uploadPhoto', dataUrl: photo });
-    return url;
-  }
-  return photo || null;
-}
-
-/* ---------- State ---------- */
-let boxes = [];
-let activeRoomFilter = null;
+/* ---------- Storage ---------- */
+const STORE_KEY = 'wishlistItems';
+let items = load();
 let searchQuery = '';
 let editingId = null;
-let currentPhotos = [];
+let currentPhoto = null;
 
-const ROOM_PRESETS = ['Kitchen','Living Room','Bedroom','Bathroom','Office','Garage','Kids Room','Dining Room','Storage / Basement','Outdoor','Other'];
-const ROOM_COLORS = {};
-const PALETTE = ['#f0d9c5','#d9e8d3','#d3e3ec','#ecd3e0','#e8e0c8','#d9d3ec','#e0d3c8','#c8ece4'];
-function roomColor(room){
-  if(!room) return 'var(--chip)';
-  if(!ROOM_COLORS[room]){
-    const idx = Object.keys(ROOM_COLORS).length % PALETTE.length;
-    ROOM_COLORS[room] = PALETTE[idx];
-  }
-  return ROOM_COLORS[room];
-}
-
-/* ---------- Init ---------- */
-async function init(){
-  if(!isConfigured){
-    document.getElementById('addFab').style.display = 'none';
-    document.querySelector('main').innerHTML = `<div class="empty-state"><div class="big">⚙️</div><div>Shared sync isn't set up yet — add your Apps Script Web App URL in index.html (WEBAPP_URL).</div></div>`;
-    return;
-  }
+function load(){
   try{
-    boxes = await dbGetAll();
-    sortBoxes();
-    render();
-  }catch(err){
-    console.error(err);
-    document.querySelector('main').innerHTML = `<div class="empty-state"><div class="big">⚠️</div><div>Couldn't load shared boxes (${escapeHtml(err.message)}). Check your connection and reload.</div></div>`;
-    return;
-  }
-  startSync();
+    const raw = localStorage.getItem(STORE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
 }
-init();
-
-function startSync(){
-  setInterval(refreshFromServer, 10000);
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState === 'visible') refreshFromServer();
-  });
-}
-async function refreshFromServer(){
-  if(document.getElementById('formOverlay')) return;
-  try{
-    boxes = await dbGetAll();
-    sortBoxes();
-    render();
-  }catch(err){
-    console.error('Sync failed', err);
-  }
+function save(){
+  localStorage.setItem(STORE_KEY, JSON.stringify(items));
 }
 
-/* ---------- Identifiers ---------- */
-function sortBoxes(){
-  boxes.sort((a,b)=>{
-    const ra = (a.room||'').toLowerCase(), rb = (b.room||'').toLowerCase();
-    if(ra !== rb) return ra.localeCompare(rb);
-    return (a.number||0) - (b.number||0);
-  });
-}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+function fmtMoney(n){ return '$' + (Math.round(n*100)/100).toFixed(2); }
 
-function nextNumberForRoom(room, excludeId){
-  const norm = (room||'').trim().toLowerCase();
-  const scoped = boxes.filter(b => (b.room||'').trim().toLowerCase() === norm && b.id !== excludeId);
-  const max = scoped.reduce((m,b)=> Math.max(m, b.number||0), 0);
-  return max + 1;
-}
-
-function boxIdentifier(b){
-  return b.room ? `${b.number}-${b.room}` : `${b.number}`;
-}
-
+/* ---------- Render ---------- */
 function render(){
-  renderChips();
-  renderStats();
   renderGrid();
+  renderTotal();
 }
 
-function renderChips(){
-  const rooms = [...new Set(boxes.map(b=>b.room).filter(Boolean))];
-  const chipsEl = document.getElementById('roomChips');
-  if(rooms.length === 0){ chipsEl.innerHTML=''; return; }
-  chipsEl.innerHTML = rooms.map(r=>{
-    const count = boxes.filter(b=>b.room===r).length;
-    const active = activeRoomFilter === r ? 'active' : '';
-    return `<div class="chip ${active}" data-room="${escapeAttr(r)}">${escapeHtml(r)} (${count})</div>`;
-  }).join('');
-  chipsEl.querySelectorAll('.chip').forEach(el=>{
-    el.onclick = ()=>{
-      const r = el.getAttribute('data-room');
-      activeRoomFilter = (activeRoomFilter === r) ? null : r;
-      render();
-    };
-  });
-}
-
-function renderStats(){
-  document.getElementById('countTag').textContent = boxes.length ? `· ${boxes.length}` : '';
-  const rooms = new Set(boxes.map(b=>b.room).filter(Boolean)).size;
-  document.getElementById('statsLine').textContent = boxes.length
-    ? `${boxes.length} box${boxes.length===1?'':'es'} across ${rooms} room${rooms===1?'':'s'}`
-    : '';
-}
-
-function filteredBoxes(){
-  return boxes.filter(b=>{
-    if(activeRoomFilter && b.room !== activeRoomFilter) return false;
-    if(searchQuery){
-      const hay = `${boxIdentifier(b)} ${b.name||''} ${b.room||''} ${b.contents||''}`.toLowerCase();
-      if(!hay.includes(searchQuery.toLowerCase())) return false;
-    }
-    return true;
-  });
+function filteredItems(){
+  if(!searchQuery) return items;
+  const q = searchQuery.toLowerCase();
+  return items.filter(it => `${it.name||''}`.toLowerCase().includes(q));
 }
 
 function renderGrid(){
-  const list = filteredBoxes();
+  const list = filteredItems();
   const grid = document.getElementById('grid');
   const empty = document.getElementById('emptyState');
-  if(boxes.length === 0){
+  document.getElementById('countTag').textContent = items.length ? `· ${items.length}` : '';
+
+  if(items.length === 0){
     grid.innerHTML=''; empty.style.display='block';
-    empty.querySelector('.big').textContent = '📦';
-    empty.querySelector('div:last-child').textContent = 'No boxes yet. Tap + to add your first box.';
+    empty.querySelector('.big').textContent = '🛍️';
+    empty.querySelector('div:last-child').textContent = 'No products yet. Tap + to add one you saw online.';
     return;
   }
   if(list.length === 0){
     grid.innerHTML=''; empty.style.display='block';
     empty.querySelector('.big').textContent = '🔍';
-    empty.querySelector('div:last-child').textContent = 'No boxes match your search or filter.';
+    empty.querySelector('div:last-child').textContent = 'No products match your search.';
     return;
   }
   empty.style.display='none';
-  grid.innerHTML = list.map(b=>{
-    const photos = b.photos || [];
-    const photoStyle = photos[0] ? `style="background-image:url('${photos[0]}')"` : '';
-    const contentsLines = (b.contents||'').split('\n').filter(Boolean);
+
+  grid.innerHTML = list.map(it=>{
+    const photoStyle = it.photo ? `style="background-image:url('${it.photo}')"` : '';
     return `
-    <div class="card" data-id="${b.id}">
-      <div class="photo ${photos[0]?'':'empty'}" ${photoStyle} data-action="view-photo">
-        ${b.status ? `<div class="status-dot">${escapeHtml(b.status)}</div>` : ''}
-        ${photos.length>1 ? `<div class="photo-count">📷 ${photos.length}</div>` : ''}
-      </div>
+    <div class="card ${it.included===false?'off':''}" data-id="${it.id}">
+      <div class="toggle-wrap"><input type="checkbox" data-action="toggle" ${it.included!==false?'checked':''}></div>
+      <div class="photo ${it.photo?'':'empty'}" ${photoStyle} data-action="view-photo"></div>
       <div class="body">
-        <div class="title-row">
-          <div class="num">${escapeHtml(boxIdentifier(b))}</div>
-          <div class="name">${escapeHtml(b.name||'')}</div>
-        </div>
-        ${b.room ? `<div class="room-badge" style="background:${roomColor(b.room)}">${escapeHtml(b.room)}</div>` : ''}
-        <div class="contents-preview">${escapeHtml(contentsLines.join(', '))}</div>
+        <div class="name">${escapeHtml(it.name||'Untitled product')}</div>
+        <div class="price">${fmtMoney(it.price||0)}</div>
+        ${it.url ? `<a class="link" href="${escapeAttr(it.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(it.url.replace(/^https?:\/\//,''))}</a>` : ''}
         <div class="card-actions">
           <button data-action="edit">Edit</button>
           <button data-action="delete" class="danger">Delete</button>
@@ -339,61 +175,59 @@ function renderGrid(){
   }).join('');
 
   grid.querySelectorAll('.card').forEach(card=>{
-    const id = Number(card.getAttribute('data-id'));
+    const id = card.getAttribute('data-id');
     card.querySelector('[data-action="edit"]').onclick = ()=>openForm(id);
     card.querySelector('[data-action="delete"]').onclick = ()=>confirmDelete(id);
+    card.querySelector('[data-action="toggle"]').onchange = (e)=>{
+      const it = items.find(x=>x.id===id);
+      it.included = e.target.checked;
+      save();
+      card.classList.toggle('off', !it.included);
+      renderTotal();
+    };
     const photoEl = card.querySelector('[data-action="view-photo"]');
     photoEl.onclick = ()=>{
-      const box = boxes.find(x=>x.id===id);
-      if(box && box.photos && box.photos.length) openLightbox(box.photos, 0);
+      const it = items.find(x=>x.id===id);
+      if(it && it.photo) openLightbox(it.photo);
     };
   });
 }
 
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function escapeAttr(s){ return escapeHtml(s); }
+function renderTotal(){
+  const bar = document.getElementById('totalBar');
+  if(items.length === 0){ bar.style.display='none'; return; }
+  bar.style.display='flex';
+  const included = items.filter(it=>it.included!==false);
+  const total = included.reduce((sum,it)=> sum + (Number(it.price)||0), 0);
+  document.getElementById('totalLabel').textContent = `${included.length} of ${items.length} selected`;
+  document.getElementById('totalAmount').textContent = fmtMoney(total);
+}
 
-/* ---------- Search / filter events ---------- */
+/* ---------- Search ---------- */
 document.getElementById('searchInput').addEventListener('input', e=>{
   searchQuery = e.target.value;
   renderGrid();
 });
 
 /* ---------- Lightbox ---------- */
-function openLightbox(photos, startIndex){
-  let idx = startIndex || 0;
+function openLightbox(photo){
   const root = document.getElementById('modalRoot');
   const div = document.createElement('div');
   div.className = 'lightbox';
-
-  function renderLightbox(){
-    div.innerHTML = `
-      <img src="${photos[idx]}">
-      ${photos.length>1 ? `
-        <button class="lightbox-nav prev" type="button" aria-label="Previous">‹</button>
-        <button class="lightbox-nav next" type="button" aria-label="Next">›</button>
-        <div class="lightbox-counter">${idx+1} / ${photos.length}</div>
-      ` : ''}
-    `;
-    if(photos.length>1){
-      div.querySelector('.prev').onclick = (e)=>{ e.stopPropagation(); idx = (idx-1+photos.length)%photos.length; renderLightbox(); };
-      div.querySelector('.next').onclick = (e)=>{ e.stopPropagation(); idx = (idx+1)%photos.length; renderLightbox(); };
-    }
-  }
-  renderLightbox();
-  div.onclick = (e)=>{ if(e.target === div) div.remove(); };
+  div.innerHTML = `<img src="${photo}">`;
+  div.onclick = ()=> div.remove();
   root.appendChild(div);
 }
 
 /* ---------- Delete ---------- */
-async function confirmDelete(id){
-  const box = boxes.find(b=>b.id===id);
-  if(!box) return;
-  if(!confirm(`Delete Box ${boxIdentifier(box)}${box.name?' — '+box.name:''}?`)) return;
-  await dbDelete(id);
-  boxes = boxes.filter(b=>b.id!==id);
+function confirmDelete(id){
+  const it = items.find(x=>x.id===id);
+  if(!it) return;
+  if(!confirm(`Delete "${it.name||'this product'}"?`)) return;
+  items = items.filter(x=>x.id!==id);
+  save();
   render();
-  toast('Box deleted');
+  toast('Product deleted');
 }
 
 /* ---------- Toast ---------- */
@@ -408,18 +242,19 @@ function toast(msg){
   el.textContent = msg;
   root.appendChild(el);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=> el.remove(), 2200);
+  toastTimer = setTimeout(()=> el.remove(), 2000);
 }
 
 /* ---------- Add / Edit form ---------- */
 document.getElementById('addFab').onclick = ()=> openForm(null);
+document.getElementById('addFab2').onclick = ()=> openForm(null);
 
 function openForm(id){
   document.getElementById('formOverlay')?.remove();
 
   editingId = id;
-  const box = id ? boxes.find(b=>b.id===id) : null;
-  currentPhotos = box ? [...(box.photos||[])] : [];
+  const it = id ? items.find(x=>x.id===id) : null;
+  currentPhoto = it ? (it.photo || null) : null;
 
   const root = document.getElementById('modalRoot');
   const overlay = document.createElement('div');
@@ -427,53 +262,34 @@ function openForm(id){
   overlay.id = 'formOverlay';
   overlay.innerHTML = `
     <div class="sheet">
-      <h2>${box ? 'Edit Box '+boxIdentifier(box) : 'New Box'}</h2>
+      <h2>${it ? 'Edit Product' : 'New Product'}</h2>
 
-      <div class="field">
-        <label>Photos</label>
-        <div class="photo-strip" id="photoThumbs"></div>
-      </div>
-
-      <div class="ai-row">
-        <button class="ai-btn" id="aiDetectBtn">✨ Auto-detect contents from photos</button>
-        <button class="icon-btn" id="apiKeyBtn" title="Set API key">🔑</button>
-      </div>
-      <div class="ai-status" id="aiStatus"></div>
-
-      <div class="two-col">
-        <div class="field">
-          <label>Number in room</label>
-          <input type="text" id="fieldNumber" inputmode="numeric" value="${box ? box.number : nextNumberForRoom('', null)}">
-        </div>
-        <div class="field">
-          <label>Status</label>
-          <select id="fieldStatus">
-            ${['Packed','In Transit','Delivered','Unpacked'].map(s=>`<option ${box&&box.status===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
+      <div class="photo-pick">
+        <div class="photo-preview" id="photoPreview">${currentPhoto ? `<img src="${currentPhoto}">` : '🛍️'}</div>
+        <label class="photo-pick-btn">
+          Choose photo
+          <input type="file" accept="image/*" id="photoInput">
+        </label>
       </div>
 
       <div class="field">
-        <label>Name (optional)</label>
-        <input type="text" id="fieldName" placeholder="e.g. Pots &amp; Pans" value="${box ? escapeAttr(box.name||'') : ''}">
+        <label>Product name</label>
+        <input type="text" id="fieldName" placeholder="e.g. Wireless Headphones" value="${it ? escapeAttr(it.name||'') : ''}">
       </div>
 
       <div class="field">
-        <label>Room</label>
-        <input type="text" list="roomList" id="fieldRoom" placeholder="e.g. Kitchen" value="${box ? escapeAttr(box.room||'') : ''}">
-        <datalist id="roomList">
-          ${ROOM_PRESETS.map(r=>`<option value="${r}">`).join('')}
-        </datalist>
+        <label>Price</label>
+        <input type="number" id="fieldPrice" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="${it && it.price!=null ? it.price : ''}">
       </div>
 
       <div class="field">
-        <label>Contents (one item per line)</label>
-        <textarea id="fieldContents" placeholder="Frying pan&#10;Saucepan&#10;Oven mitts">${box ? escapeHtml(box.contents||'') : ''}</textarea>
+        <label>Link (optional)</label>
+        <input type="url" id="fieldUrl" placeholder="https://…" value="${it ? escapeAttr(it.url||'') : ''}">
       </div>
 
       <div class="btn-row">
         <button class="btn ghost" id="cancelBtn">Cancel</button>
-        <button class="btn primary" id="saveBtn">Save Box</button>
+        <button class="btn primary" id="saveBtn">Save</button>
       </div>
     </div>
   `;
@@ -481,45 +297,16 @@ function openForm(id){
 
   overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
   document.getElementById('cancelBtn').onclick = ()=> overlay.remove();
-  document.getElementById('aiDetectBtn').onclick = runAiDetect;
-  document.getElementById('apiKeyBtn').onclick = promptApiKey;
   document.getElementById('saveBtn').onclick = saveForm;
-  document.getElementById('fieldRoom').addEventListener('input', ()=>{
-    document.getElementById('fieldNumber').value = nextNumberForRoom(document.getElementById('fieldRoom').value, editingId);
-  });
-
-  renderPhotoThumbs();
-}
-
-function renderPhotoThumbs(){
-  const strip = document.getElementById('photoThumbs');
-  strip.innerHTML = currentPhotos.map((url, i) => `
-    <div class="photo-thumb">
-      <img src="${url}">
-      <button class="remove" type="button" data-i="${i}">×</button>
-    </div>
-  `).join('') + `
-    <div class="photo-add-tile">
-      <span>📷</span>
-      <input type="file" accept="image/*" multiple id="photoInput">
-    </div>
-  `;
-  strip.querySelectorAll('.remove').forEach(btn=>{
-    btn.onclick = ()=>{
-      currentPhotos.splice(Number(btn.getAttribute('data-i')), 1);
-      renderPhotoThumbs();
-    };
-  });
   document.getElementById('photoInput').onchange = handlePhotoChange;
-  updateAiButtonState();
 }
 
 function handlePhotoChange(e){
-  const files = Array.from(e.target.files || []);
-  if(!files.length) return;
-  Promise.all(files.map(f => resizeImageFile(f, 1400, 0.82))).then(dataUrls=>{
-    currentPhotos.push(...dataUrls);
-    renderPhotoThumbs();
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  resizeImageFile(file, 900, 0.82).then(dataUrl=>{
+    currentPhoto = dataUrl;
+    document.getElementById('photoPreview').innerHTML = `<img src="${currentPhoto}">`;
   });
 }
 
@@ -547,209 +334,37 @@ function resizeImageFile(file, maxDim, quality){
   });
 }
 
-function newPhotos(){
-  return currentPhotos.filter(p => p.startsWith('data:'));
-}
-
-function updateAiButtonState(){
-  const btn = document.getElementById('aiDetectBtn');
-  if(!btn) return;
-  const hasKey = !!localStorage.getItem('anthropicApiKey');
-  const hasNewPhotos = newPhotos().length > 0;
-  btn.disabled = !hasKey || !hasNewPhotos;
-  btn.title = !hasKey ? 'Set your Anthropic API key first (🔑)' : (!hasNewPhotos ? 'Add a new photo first' : '');
-}
-
-function promptApiKey(){
-  const existing = localStorage.getItem('anthropicApiKey') || '';
-  const key = prompt('Anthropic API key (stored only in this browser, used to auto-detect box contents from photos):', existing);
-  if(key !== null){
-    if(key.trim()) localStorage.setItem('anthropicApiKey', key.trim());
-    else localStorage.removeItem('anthropicApiKey');
-  }
-  updateAiButtonState();
-}
-
-async function runAiDetect(){
-  const key = localStorage.getItem('anthropicApiKey');
-  const photosToAnalyze = newPhotos();
-  if(!key || photosToAnalyze.length === 0) return;
-  const statusEl = document.getElementById('aiStatus');
-  const btn = document.getElementById('aiDetectBtn');
-  btn.disabled = true;
-  statusEl.textContent = photosToAnalyze.length > 1 ? 'Analyzing photos…' : 'Analyzing photo…';
-
-  try{
-    const imageBlocks = photosToAnalyze.map(dataUrl=>{
-      const match = dataUrl.match(/^data:(image\/\w+);base64,(.*)$/);
-      if(!match) throw new Error('Bad image data');
-      return { type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } };
-    });
-
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 700,
-        messages: [{
-          role: 'user',
-          content: [
-            ...imageBlocks,
-            { type: 'text', text: 'These photos show the inside of a moving box (possibly multiple angles of the same box), possibly with a label/card showing a box number or name. Respond with ONLY raw JSON (no markdown fences) in this exact shape: {"boxLabel": string or null, "items": [string, ...], "suggestedRoom": one of ["Kitchen","Living Room","Bedroom","Bathroom","Office","Garage","Kids Room","Dining Room","Storage / Basement","Outdoor","Other"]}. Combine and de-duplicate visible items across all photos into one list.' }
-          ]
-        }]
-      })
-    });
-
-    if(!res.ok){
-      const errText = await res.text();
-      throw new Error(`API error ${res.status}: ${errText.slice(0,200)}`);
-    }
-    const data = await res.json();
-    let text = (data.content && data.content[0] && data.content[0].text) || '';
-    text = text.trim().replace(/^```(json)?/i,'').replace(/```$/,'').trim();
-    const parsed = JSON.parse(text);
-
-    if(Array.isArray(parsed.items) && parsed.items.length){
-      document.getElementById('fieldContents').value = parsed.items.join('\n');
-    }
-    if(parsed.suggestedRoom && !document.getElementById('fieldRoom').value){
-      document.getElementById('fieldRoom').value = parsed.suggestedRoom;
-      document.getElementById('fieldNumber').value = nextNumberForRoom(parsed.suggestedRoom, editingId);
-    }
-    if(parsed.boxLabel && !document.getElementById('fieldName').value){
-      document.getElementById('fieldName').value = parsed.boxLabel;
-    }
-    statusEl.textContent = 'Done — review and edit before saving.';
-  }catch(err){
-    console.error(err);
-    statusEl.textContent = 'Could not auto-detect (' + err.message + '). Fill in manually.';
-  }finally{
-    btn.disabled = false;
-    updateAiButtonState();
-  }
-}
-
-async function saveForm(){
-  const room = document.getElementById('fieldRoom').value.trim();
-  const number = parseInt(document.getElementById('fieldNumber').value,10) || nextNumberForRoom(room, editingId);
+function saveForm(){
   const name = document.getElementById('fieldName').value.trim();
-  const contents = document.getElementById('fieldContents').value.trim();
-  const status = document.getElementById('fieldStatus').value;
+  const price = parseFloat(document.getElementById('fieldPrice').value) || 0;
+  const url = document.getElementById('fieldUrl').value.trim();
 
-  const saveBtn = document.getElementById('saveBtn');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Saving…';
-
-  try{
-    const box = editingId ? { ...boxes.find(b=>b.id===editingId) } : {};
-    box.number = number;
-    box.name = name;
-    box.room = room;
-    box.contents = contents;
-    box.status = status;
-    box.photos = await Promise.all(currentPhotos.map(resolvePhotoUrl));
-
-    const saved = await dbPut(box);
-    const idx = boxes.findIndex(b=>b.id===saved.id);
-    if(idx === -1) boxes.push(saved); else boxes[idx] = saved;
-
-    sortBoxes();
-    document.getElementById('formOverlay').remove();
-    render();
-    toast(editingId ? 'Box updated' : 'Box added');
-  }catch(err){
-    console.error(err);
-    alert('Could not save box: ' + err.message);
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Save Box';
+  if(!name){
+    document.getElementById('fieldName').focus();
+    return;
   }
+
+  if(editingId){
+    const it = items.find(x=>x.id===editingId);
+    it.name = name;
+    it.price = price;
+    it.url = url;
+    it.photo = currentPhoto;
+  }else{
+    items.push({
+      id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+      name, price, url, photo: currentPhoto, included: true
+    });
+  }
+
+  save();
+  document.getElementById('formOverlay').remove();
+  render();
+  toast(editingId ? 'Product updated' : 'Product added');
 }
 
-/* ---------- Menu: export / import / print ---------- */
-document.getElementById('menuBtn').onclick = (e)=>{
-  e.stopPropagation();
-  const existing = document.getElementById('mainMenu');
-  if(existing){ existing.remove(); return; }
-  const menu = document.createElement('div');
-  menu.className = 'menu';
-  menu.id = 'mainMenu';
-  menu.innerHTML = `
-    <button id="printBtn">🖨️ Print packing list</button>
-    <button id="csvBtn">⬇️ Export CSV</button>
-    <button id="jsonBtn">⬇️ Export backup (JSON)</button>
-    <button id="importBtn">⬆️ Import backup</button>
-    <button id="apiKeyMenuBtn">🔑 Set Anthropic API key</button>
-  `;
-  document.getElementById('modalRoot').appendChild(menu);
-  document.addEventListener('click', function closeMenu(ev){
-    if(!menu.contains(ev.target) && ev.target.id !== 'menuBtn'){
-      menu.remove();
-      document.removeEventListener('click', closeMenu);
-    }
-  });
-  document.getElementById('printBtn').onclick = ()=>{ menu.remove(); window.print(); };
-  document.getElementById('csvBtn').onclick = ()=>{ menu.remove(); exportCsv(); };
-  document.getElementById('jsonBtn').onclick = ()=>{ menu.remove(); exportJson(); };
-  document.getElementById('importBtn').onclick = ()=>{ menu.remove(); importJson(); };
-  document.getElementById('apiKeyMenuBtn').onclick = ()=>{ menu.remove(); promptApiKey(); };
-};
-
-function downloadBlob(content, filename, type){
-  const blob = new Blob([content], {type});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function exportCsv(){
-  const rows = [['Box ID','Name','Room','Status','Contents']];
-  boxes.forEach(b=> rows.push([boxIdentifier(b), b.name||'', b.room||'', b.status||'', (b.contents||'').replace(/\n/g,'; ')]));
-  const csv = rows.map(r=> r.map(v=> `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  downloadBlob(csv, 'moving-boxes.csv', 'text/csv');
-  toast('CSV exported');
-}
-
-function exportJson(){
-  downloadBlob(JSON.stringify(boxes,null,2), 'moving-boxes-backup.json', 'application/json');
-  toast('Backup exported');
-}
-
-function importJson(){
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'application/json';
-  input.onchange = async ()=>{
-    const file = input.files[0];
-    if(!file) return;
-    const text = await file.text();
-    try{
-      const imported = JSON.parse(text);
-      if(!Array.isArray(imported)) throw new Error('Invalid file');
-      for(const b of imported){
-        const { id, createdAt, updatedAt, ...rest } = b;
-        const photos = rest.photos || (rest.photo ? [rest.photo] : []);
-        delete rest.photo;
-        rest.photos = await Promise.all(photos.map(resolvePhotoUrl));
-        await dbPut(rest);
-      }
-      boxes = await dbGetAll();
-      sortBoxes();
-      render();
-      toast(`Imported ${imported.length} box(es)`);
-    }catch(err){
-      alert('Could not import file: ' + err.message);
-    }
-  };
-  input.click();
-}
+/* ---------- Init ---------- */
+render();
 </script>
 </body>
 </html>
