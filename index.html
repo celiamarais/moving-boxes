@@ -105,6 +105,14 @@
   .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line);}
   .btn.ghost:hover{border-color:var(--sub);}
 
+  .text-btn{display:block;margin:12px auto 0 auto;background:none;border:none;color:var(--sub);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:4px;font-family:var(--font-body);}
+  .text-btn:hover{color:var(--accent);}
+
+  .url-row{display:flex;gap:8px;align-items:center;}
+  .url-row input{flex:1;}
+  .url-row .icon-btn{width:38px;height:38px;font-size:16px;}
+  .fetch-status{font-size:12.5px;color:var(--sub);margin:-8px 0 14px 0;min-height:16px;}
+
   .lightbox{position:fixed;inset:0;background:rgba(10,10,6,.88);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;}
   .lightbox img{max-width:100%;max-height:100%;border-radius:4px;}
 
@@ -293,24 +301,188 @@ function toast(msg){
   toastTimer = setTimeout(()=> el.remove(), 2000);
 }
 
+/* ---------- Fetching product details from a link ---------- */
+const CORS_PROXIES = [
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
+];
+
+async function proxyFetch(targetUrl){
+  let lastErr;
+  for(const build of CORS_PROXIES){
+    try{
+      const res = await fetch(build(targetUrl));
+      if(res.ok) return res;
+      lastErr = new Error('site returned ' + res.status);
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error('could not reach that link');
+}
+
+function absolutize(maybeUrl, base){
+  if(!maybeUrl) return '';
+  try{ return new URL(maybeUrl, base).href; }catch(e){ return ''; }
+}
+
+function extractProductInfo(html, baseUrl){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const meta = (...names) => {
+    for(const n of names){
+      const el = doc.querySelector(`meta[property="${n}"], meta[name="${n}"]`);
+      const v = el && el.getAttribute('content');
+      if(v && v.trim()) return v.trim();
+    }
+    return '';
+  };
+
+  const name = meta('og:title','twitter:title') || (doc.querySelector('title')?.textContent || '').trim();
+
+  let price = meta('product:price:amount','og:price:amount','og:price:standard_amount');
+  if(!price){
+    for(const script of doc.querySelectorAll('script[type="application/ld+json"]')){
+      let data;
+      try{ data = JSON.parse(script.textContent); }catch(e){ continue; }
+      const nodes = [];
+      const collect = d => {
+        if(Array.isArray(d)) d.forEach(collect);
+        else if(d && typeof d === 'object'){
+          nodes.push(d);
+          if(Array.isArray(d['@graph'])) d['@graph'].forEach(collect);
+        }
+      };
+      collect(data);
+      for(const node of nodes){
+        const offer = Array.isArray(node.offers) ? node.offers[0] : node.offers;
+        if(offer && offer.price){ price = String(offer.price); break; }
+        if(node.price){ price = String(node.price); break; }
+      }
+      if(price) break;
+    }
+  }
+  if(!price){
+    const el = doc.querySelector('[itemprop="price"]');
+    if(el) price = el.getAttribute('content') || el.textContent || '';
+  }
+  price = (price.match(/[\d.,]+/) || [''])[0].replace(/,/g,'');
+
+  const image = absolutize(meta('og:image:secure_url','og:image','twitter:image'), baseUrl);
+
+  return { name, price, image };
+}
+
+async function fetchProductInfo(url){
+  const res = await proxyFetch(url);
+  const html = await res.text();
+  return extractProductInfo(html, url);
+}
+
+async function resolveImageToDataUrl(imageUrl){
+  try{
+    const res = await proxyFetch(imageUrl);
+    const blob = await res.blob();
+    if(!blob.type.startsWith('image/')) throw new Error('not an image');
+    return await resizeImageFile(blob, 900, 0.82);
+  }catch(e){
+    return imageUrl;
+  }
+}
+
 /* ---------- Add / Edit form ---------- */
 document.getElementById('addFab').onclick = ()=> openForm(null);
 document.getElementById('addFab2').onclick = ()=> openForm(null);
 
 function openForm(id){
-  document.getElementById('formOverlay')?.remove();
-
   editingId = id;
   const it = id ? items.find(x=>x.id===id) : null;
-  currentPhoto = it ? (it.photo || null) : null;
+  if(it){
+    currentPhoto = it.photo || null;
+    renderReviewForm(it);
+  }else{
+    renderLinkStep();
+  }
+}
 
+function renderLinkStep(){
+  document.getElementById('formOverlay')?.remove();
   const root = document.getElementById('modalRoot');
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.id = 'formOverlay';
   overlay.innerHTML = `
     <div class="sheet">
-      <h2>${it ? 'Edit Product' : 'New Product'}</h2>
+      <h2>New Product</h2>
+
+      <div class="field">
+        <label>Product link</label>
+        <input type="url" id="fieldLinkOnly" placeholder="https://…">
+      </div>
+      <div class="fetch-status" id="fetchStatus"></div>
+
+      <div class="btn-row">
+        <button class="btn ghost" id="cancelBtn">Cancel</button>
+        <button class="btn primary" id="grabBtn">Add</button>
+      </div>
+      <button type="button" class="text-btn" id="manualBtn">Enter details manually instead</button>
+    </div>
+  `;
+  root.appendChild(overlay);
+
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+  document.getElementById('cancelBtn').onclick = ()=> overlay.remove();
+  document.getElementById('manualBtn').onclick = ()=>{ currentPhoto = null; renderReviewForm(null); };
+
+  const urlInput = document.getElementById('fieldLinkOnly');
+  urlInput.focus();
+  const grab = ()=> runGrab(urlInput.value.trim());
+  document.getElementById('grabBtn').onclick = grab;
+  urlInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); grab(); } });
+}
+
+async function runGrab(url){
+  if(!url) return;
+  const statusEl = document.getElementById('fetchStatus');
+  const grabBtn = document.getElementById('grabBtn');
+  grabBtn.disabled = true;
+  statusEl.textContent = 'Fetching product details…';
+
+  let info = { name:'', price:'', image:'' };
+  try{
+    info = await fetchProductInfo(url);
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't reach that link (" + err.message + "). Enter details manually below.";
+    grabBtn.disabled = false;
+    renderReviewForm({ name:'', price:'', url, photo:null });
+    return;
+  }
+
+  currentPhoto = null;
+  if(info.image){
+    statusEl.textContent = 'Fetching photo…';
+    currentPhoto = await resolveImageToDataUrl(info.image);
+  }
+
+  renderReviewForm({ name: info.name, price: info.price, url, photo: currentPhoto });
+  if(!info.name && !info.price && !currentPhoto){
+    toast("Couldn't find details automatically — fill them in below");
+  }else if(!info.price){
+    toast('Price not found — add it below');
+  }
+}
+
+function renderReviewForm(prefill){
+  const it = editingId ? items.find(x=>x.id===editingId) : null;
+  const data = prefill || it || {};
+  if(prefill && 'photo' in prefill) currentPhoto = prefill.photo;
+
+  document.getElementById('formOverlay')?.remove();
+  const root = document.getElementById('modalRoot');
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'formOverlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h2>${it ? 'Edit Product' : 'Review Product'}</h2>
 
       <div class="photo-pick">
         <div class="photo-preview" id="photoPreview">${currentPhoto ? `<img src="${currentPhoto}">` : '🏷️'}</div>
@@ -321,18 +493,22 @@ function openForm(id){
       </div>
 
       <div class="field">
+        <label>Product link</label>
+        <div class="url-row">
+          <input type="url" id="fieldUrl" placeholder="https://…" value="${escapeAttr(data.url||'')}">
+          <button type="button" class="icon-btn" id="refetchBtn" title="Re-fetch details" aria-label="Re-fetch details">↻</button>
+        </div>
+      </div>
+      <div class="fetch-status" id="fetchStatus"></div>
+
+      <div class="field">
         <label>Product name</label>
-        <input type="text" id="fieldName" placeholder="e.g. Wireless Headphones" value="${it ? escapeAttr(it.name||'') : ''}">
+        <input type="text" id="fieldName" placeholder="e.g. Wireless Headphones" value="${escapeAttr(data.name||'')}">
       </div>
 
       <div class="field">
         <label>Price</label>
-        <input type="number" id="fieldPrice" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="${it && it.price!=null ? it.price : ''}">
-      </div>
-
-      <div class="field">
-        <label>Link (optional)</label>
-        <input type="url" id="fieldUrl" placeholder="https://…" value="${it ? escapeAttr(it.url||'') : ''}">
+        <input type="number" id="fieldPrice" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="${data.price!=null && data.price!=='' ? data.price : ''}">
       </div>
 
       <div class="btn-row">
@@ -347,6 +523,29 @@ function openForm(id){
   document.getElementById('cancelBtn').onclick = ()=> overlay.remove();
   document.getElementById('saveBtn').onclick = saveForm;
   document.getElementById('photoInput').onchange = handlePhotoChange;
+  document.getElementById('refetchBtn').onclick = async ()=>{
+    const url = document.getElementById('fieldUrl').value.trim();
+    if(!url) return;
+    const statusEl = document.getElementById('fetchStatus');
+    const btn = document.getElementById('refetchBtn');
+    btn.disabled = true;
+    statusEl.textContent = 'Fetching product details…';
+    try{
+      const info = await fetchProductInfo(url);
+      if(info.name) document.getElementById('fieldName').value = info.name;
+      if(info.price) document.getElementById('fieldPrice').value = info.price;
+      if(info.image){
+        statusEl.textContent = 'Fetching photo…';
+        currentPhoto = await resolveImageToDataUrl(info.image);
+        document.getElementById('photoPreview').innerHTML = `<img src="${currentPhoto}">`;
+      }
+      statusEl.textContent = 'Details refreshed — review before saving.';
+    }catch(err){
+      statusEl.textContent = "Couldn't fetch (" + err.message + ").";
+    }finally{
+      btn.disabled = false;
+    }
+  };
 }
 
 function handlePhotoChange(e){
